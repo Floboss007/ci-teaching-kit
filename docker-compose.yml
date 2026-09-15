@@ -1,0 +1,15 @@
+# Tomcat is no longer here — it now runs as a Pod inside GKE (see
+# k8s/deployment.yaml), managed by Kubernetes instead of Docker Compose.
+# Nexus stays here, running on its own small VM, since it's just an
+# artifact store with no need for K8s's scheduling/scaling features.
+services:
+  nexus:
+    image: sonatype/nexus3:latest
+    container_name: ci-nexus
+    ports:
+      - "8081:8081"
+    volumes:
+      - nexus_data:/nexus-data
+
+volumes:
+  nexus_data:

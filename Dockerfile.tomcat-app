@@ -1,0 +1,18 @@
+# This replaces the old "curl --upload-file the WAR to Tomcat's manager
+# API" deploy step. Instead, the WAR is baked directly into a Tomcat
+# image at build time, and Kubernetes runs that image as a Pod — same
+# Tomcat, just packaged as a self-contained image instead of a running
+# server you upload files into afterward.
+FROM tomcat:9.0-jdk17
+
+# Tomcat's official image ships with an empty webapps/ folder (same
+# quirk we hit in the Docker Compose version) — install the manager app
+# too, in case it's ever needed for debugging inside the pod.
+RUN cp -Rn /usr/local/tomcat/webapps.dist/* /usr/local/tomcat/webapps/
+
+# The actual application — built by `mvn package` in the pipeline,
+# copied in here at image-build time.
+COPY app/target/ci-demo-app.war /usr/local/tomcat/webapps/ci-demo-app.war
+
+EXPOSE 8080
+CMD ["catalina.sh", "run"]

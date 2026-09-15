@@ -1,0 +1,38 @@
+# A Deployment tells Kubernetes: "keep this many copies of this
+# container running, and if one crashes, start a replacement
+# automatically." This is the core thing Docker Compose's "just start
+# one container" didn't do — K8s actively supervises it.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ci-demo-app
+  labels:
+    app: ci-demo-app
+spec:
+  replicas: 1 # one copy is enough for a teaching demo; bump this number
+              # and K8s would run that many simultaneously, no other
+              # config needed — this is the "why K8s" moment worth
+              # pointing out to students
+  selector:
+    matchLabels:
+      app: ci-demo-app
+  template:
+    metadata:
+      labels:
+        app: ci-demo-app
+    spec:
+      containers:
+        - name: tomcat
+          # This exact string gets overwritten by the GitHub Actions
+          # workflow on every deploy (via `kubectl set image`) — the
+          # value here is just a starting placeholder.
+          image: REGION-docker.pkg.dev/PROJECT_ID/ci-demo-repo/ci-demo-app:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"

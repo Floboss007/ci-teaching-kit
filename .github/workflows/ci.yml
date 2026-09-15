@@ -1,0 +1,136 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      WAR_NAME: ci-demo-app
+      # Built from Terraform's `artifact_registry_repo` output — see
+      # the GCP_ARTIFACT_REPO secret setup in the README.
+      IMAGE: ${{ secrets.GCP_ARTIFACT_REPO }}/ci-demo-app:${{ github.sha }}
+
+    steps:
+      # ---- Checkout ----
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ---- Build ----
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Compile
+        working-directory: app
+        run: mvn -B clean compile
+
+      # ---- Test ----
+      - name: Run unit tests
+        working-directory: app
+        run: mvn -B test
+
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: JUnit Tests
+          path: app/target/surefire-reports/*.xml
+          reporter: java-junit
+
+      # ---- Package ----
+      - name: Package WAR
+        working-directory: app
+        run: mvn -B package -DskipTests
+
+      - name: Archive WAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-demo-app-war
+          path: app/target/${{ env.WAR_NAME }}.war
+
+      # ---- Publish WAR to Nexus ----
+      # Unchanged from before — Nexus still stores the raw WAR file as
+      # a versioned artifact, independent of the container image below.
+      - name: Publish to Nexus
+        working-directory: app
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml << EOF
+          <settings>
+            <servers>
+              <server>
+                <id>nexus-snapshots</id>
+                <username>deployer</username>
+                <password>${{ secrets.NEXUS_PASSWORD }}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+          mvn -B deploy -DskipTests -DaltSnapshotDeploymentRepository=nexus-snapshots::http://${{ secrets.VM_HOST }}:8081/repository/maven-snapshots/
+
+      # ---- Authenticate to GCP ----
+      # Needed for both pushing to Artifact Registry and deploying to
+      # GKE below. GCP_SA_KEY is a service account JSON key — see the
+      # README for how to create one and add it as a secret.
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      # ---- Build and push the container image ----
+      # This is the new step replacing the old "curl the WAR straight
+      # to Tomcat's manager API." Instead, the WAR gets baked into a
+      # Tomcat image, and that image is what actually gets deployed.
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Build Tomcat+app image
+        run: docker build -f Dockerfile.tomcat-app -t ${{ env.IMAGE }} .
+
+      - name: Push image to Artifact Registry
+        run: docker push ${{ env.IMAGE }}
+
+      # ---- Deploy to GKE ----
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
+          location: ${{ secrets.GCP_ZONE }}
+
+      - name: Apply K8s manifests
+        run: |
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+
+      - name: Deploy new image
+        # This is the actual "ship the new version" step — it tells the
+        # existing Deployment to swap in the freshly-pushed image.
+        # Kubernetes handles starting the new pod and stopping the old
+        # one automatically (a "rolling update"), with zero downtime —
+        # this replaces Tomcat's manager API "update=true" flag from
+        # the old approach, but with a real no-downtime rollout instead
+        # of a single container being overwritten in place.
+        run: |
+          kubectl set image deployment/ci-demo-app tomcat=${{ env.IMAGE }}
+          kubectl rollout status deployment/ci-demo-app
+
+      - name: Get the app's external IP and verify
+        run: |
+          echo "Waiting for LoadBalancer IP to be assigned..."
+          for i in {1..30}; do
+            IP=$(kubectl get service ci-demo-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            if [ -n "$IP" ]; then break; fi
+            sleep 10
+          done
+          echo "App is live at: http://$IP/ci-demo-app/hello"
+          curl -f "http://$IP/${{ env.WAR_NAME }}/hello"

@@ -1,0 +1,21 @@
+# Copy this file to terraform.tfvars and fill in your real values.
+# terraform.tfvars is picked up automatically by `terraform apply` — no
+# need to pass -var flags on the command line once this exists.
+#
+# Do NOT commit terraform.tfvars to Git if it ever contains anything
+# sensitive — for this project it's just an IP and a project ID, low risk,
+# but it's a good habit either way. Add "terraform.tfvars" to .gitignore.
+
+project_id = "your-gcp-project-id-here"
+
+# Find your public IP at https://whatismyip.com, then add /32 to the end
+# (that /32 means "just this one exact IP", not a whole range)
+admin_ip = "203.0.113.5/32"
+
+# Everything below already has sensible defaults in variables.tf —
+# only uncomment and change these if you want something different.
+
+# region       = "us-central1"
+# zone         = "us-central1-a"
+# machine_type = "e2-standard-2"
+# repo_url     = "https://github.com/dale-code/CI-DEMO.git"

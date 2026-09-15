@@ -1,0 +1,16 @@
+# A Service gives the Deployment's pods a stable network identity and,
+# with type: LoadBalancer, asks GCP to provision an actual external IP
+# in front of them — this replaces the manually-opened firewall port
+# 8082 we used for standalone Tomcat.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ci-demo-app-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: ci-demo-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
