@@ -14,7 +14,7 @@ provider "google" {
 }
 
 resource "google_compute_instance" "ci_stack" {
-  name         = "ci-teaching-kit-vm"
+  name         = "ci-teaching-kit-femi"
   machine_type = var.machine_type
   zone         = var.zone
   tags         = ["ci-stack"]
@@ -43,7 +43,7 @@ resource "google_compute_instance" "ci_stack" {
 # Port 8082 (Tomcat) is gone from here — Tomcat now runs inside GKE,
 # exposed via its own LoadBalancer Service, not this VM.
 resource "google_compute_firewall" "admin_access" {
-  name    = "allow-ci-stack-admin"
+  name    = "allow-ci-stack-admin-femi"
   network = "default"
 
   allow {
@@ -69,7 +69,7 @@ resource "google_compute_firewall" "admin_access" {
 # teaching VM that gets torn down after class; NOT acceptable for
 # anything long-lived or holding real data.
 resource "google_compute_firewall" "actions_runner_access" {
-  name    = "allow-github-actions-runner"
+  name    = "allow-github-actions-runner-femi"
   network = "default"
 
   allow {
@@ -102,14 +102,14 @@ resource "google_project_service" "artifact_registry" {
 resource "google_artifact_registry_repository" "ci_demo_repo" {
   depends_on    = [google_project_service.artifact_registry]
   location      = var.region
-  repository_id = "ci-demo-repo"
+  repository_id = "ci-demo-repo-femi"
   format        = "DOCKER"
 }
 
 # A small, single-node GKE cluster — enough to run one Tomcat pod for
 # teaching purposes. Real production clusters would use multiple nodes
 # across zones for actual high availability.
-resource "google_container_cluster" "ci_demo_cluster" {
+resource "google_container_cluster" "ci_demo_cluster_femi" {
   depends_on = [google_project_service.container]
   name       = "ci-demo-cluster"
   location   = var.zone
@@ -130,7 +130,7 @@ resource "google_container_cluster" "ci_demo_cluster" {
 resource "google_container_node_pool" "ci_demo_nodes" {
   name       = "ci-demo-node-pool"
   location   = var.zone
-  cluster    = google_container_cluster.ci_demo_cluster.name
+  cluster    = google_container_cluster.ci_demo_cluster_femi.name
   node_count = var.gke_node_count
 
   node_config {

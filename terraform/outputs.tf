@@ -9,7 +9,7 @@ output "nexus_url" {
 
 output "gke_cluster_name" {
   description = "Pass this to `gcloud container clusters get-credentials`"
-  value       = google_container_cluster.ci_demo_cluster.name
+  value       = google_container_cluster.ci_demo_cluster_femi.name
 }
 
 output "artifact_registry_repo" {

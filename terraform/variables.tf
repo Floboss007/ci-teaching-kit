@@ -41,5 +41,5 @@ variable "admin_ip" {
 variable "repo_url" {
   description = "Git repo URL the VM will clone on startup"
   type        = string
-  default     = "https://github.com/dale-code/CI-DEMO.git"
+  default     = "https://github.com/Floboss007/ci-teaching-kit.git"
 }
