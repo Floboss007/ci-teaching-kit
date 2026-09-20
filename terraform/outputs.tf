@@ -14,7 +14,7 @@ output "gke_cluster_name" {
 
 output "artifact_registry_repo" {
   description = "Full path to push Docker images to, e.g. in the GitHub Actions workflow"
-  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.ci_demo_repo.repository_id}"
+  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.ci_demo_repo_femi.repository_id}"
 }
 
 # Tomcat's actual URL isn't known until after the LoadBalancer Service

@@ -99,7 +99,7 @@ resource "google_project_service" "artifact_registry" {
 # this replaces Nexus's role for this part of the pipeline. Nexus still
 # stores the WAR file itself (unchanged); this is specifically for the
 # container image that gets deployed to Kubernetes.
-resource "google_artifact_registry_repository" "ci_demo_repo" {
+resource "google_artifact_registry_repository" "ci_demo_repo_femi" {
   depends_on    = [google_project_service.artifact_registry]
   location      = var.region
   repository_id = "ci-demo-repo-femi"
@@ -111,7 +111,7 @@ resource "google_artifact_registry_repository" "ci_demo_repo" {
 # across zones for actual high availability.
 resource "google_container_cluster" "ci_demo_cluster_femi" {
   depends_on = [google_project_service.container]
-  name       = "ci-demo-cluster"
+  name       = "ci-demo-cluster-femi"
   location   = var.zone
 
   # Removing the default node pool immediately and defining our own
@@ -127,8 +127,8 @@ resource "google_container_cluster" "ci_demo_cluster_femi" {
   ip_allocation_policy {}
 }
 
-resource "google_container_node_pool" "ci_demo_nodes" {
-  name       = "ci-demo-node-pool"
+resource "google_container_node_pool" "ci_demo_nodes_femi" {
+  name       = "ci-demo-node-pool-femi"
   location   = var.zone
   cluster    = google_container_cluster.ci_demo_cluster_femi.name
   node_count = var.gke_node_count
