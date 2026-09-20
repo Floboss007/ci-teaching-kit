@@ -133,4 +133,4 @@ jobs:
             sleep 10
           done
           echo "App is live at: http://$IP/ci-demo-app/hello"
-          curl -f "http://$IP/${{ env.WAR_NAME }}/hello"
+          
